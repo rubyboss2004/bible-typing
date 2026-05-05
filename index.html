@@ -386,6 +386,21 @@
         .vocab-menu-btn:hover { border-color: #c9855a; background: #fff3e6; color: #2d1f12; }
         .vocab-menu-btn .count { color: #c9855a; font-weight: 700; }
 
+        .backup-row { display: flex; gap: 10px; margin-bottom: 28px; }
+        .backup-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid #e0c8aa;
+            color: #9a7a5c;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: inherit;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .backup-btn:hover { border-color: #c9855a; color: #c9855a; }
+
         /* ── Vocab screen ── */
         #screen-vocab {
             display: none;
@@ -516,6 +531,10 @@
         <span>📖 單字本</span>
         <span class="count" id="vocab-count">0 個單字</span>
     </button>
+    <div class="backup-row">
+        <button class="backup-btn" onclick="exportData()">⬇ 匯出紀錄</button>
+        <button class="backup-btn" onclick="importData()">⬆ 匯入紀錄</button>
+    </div>
     <div id="books-container"></div>
 </div>
 
@@ -723,6 +742,52 @@ function saveProgress(book, ch, accuracy, time) {
     if (!existing || accuracy >= existing.accuracy) {
         localStorage.setItem(storageKey(book, ch), JSON.stringify({ accuracy, time }));
     }
+}
+
+// ── Export / Import ─────────────────────────────────────────────────────────
+function exportData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('btp_')) data[key] = localStorage.getItem(key);
+    }
+    if (!Object.keys(data).length) {
+        alert('還沒有紀錄可以匯出。');
+        return;
+    }
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bible-typing-backup.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                let count = 0;
+                for (const [key, value] of Object.entries(data)) {
+                    if (key.startsWith('btp_')) { localStorage.setItem(key, value); count++; }
+                }
+                buildMenu();
+                alert(`成功匯入 ${count} 筆紀錄！`);
+            } catch {
+                alert('檔案格式錯誤，請選擇正確的備份檔。');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
 }
 
 // ── Lookup ──────────────────────────────────────────────────────────────────
